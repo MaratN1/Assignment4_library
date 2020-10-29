@@ -1,7 +1,6 @@
 package main.Models;
 
 public class User extends BaseModel {
-    protected int id;
     private String fullName;
     private String login;
     private String password;
