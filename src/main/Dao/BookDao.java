@@ -1,26 +1,66 @@
 package main.Dao;
 
+import main.Models.Book;
 import main.Models.User;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-import javax.tools.ForwardingJavaFileManager;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UserDao implements IDao<User> {
-    private final String INSERT_QUERY = "insert into users(fullName, login, password, role) values(?, ?, ?, ?)";
-    private final String SELECT_QUERY = "select * from users";
-    private final String GET_BY_LOGIN_PASSWORD = "select * from users where login=? and password=?";
-    @Override
-    public List<User> select() {
+public class BookDao implements IDao<Book>{
+    private final String INSERT_QUERY = "insert into books(name, authorFullName, countOfCopies) values(?, ?, ?)";
+    private final String SELECT_QUERY = "select * from books";
+    private final String GET_BY_ID_QUERY = "select * from books where id=?";
+    private final String CHANGE_BY_ID_QUERY = "update books set name=? , authorFullName=?, countOfCopies=? where id=?";
 
+    public boolean change(int id, Book book){
         Context initialContext = null;
         Connection connection = null;
-        List<User> users = new ArrayList<>();
+
+        try
+        {
+            initialContext = new InitialContext();
+            Context envCtx = (Context)initialContext.lookup("java:comp/env");
+            DataSource ds = (DataSource)envCtx.lookup("jdbc/library_db");
+            connection = ds.getConnection();
+
+            try {
+                PreparedStatement preparedStatement = null;
+                preparedStatement = connection.prepareStatement(CHANGE_BY_ID_QUERY);
+                preparedStatement.setString(1, book.getName());
+                preparedStatement.setString(2, book.getAuthorFullName());
+                preparedStatement.setInt(3,book.getCountOfCopies());
+                preparedStatement.setInt(4,id);
+
+                int updated = preparedStatement.executeUpdate();
+
+                if(updated > 0){
+                    return true;
+                }
+
+            } catch (SQLException exception) {
+                exception.printStackTrace();
+            }
+        }
+        catch (NamingException | SQLException e)
+        {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+
+
+    @Override
+    public List<Book> select() {
+        Context initialContext = null;
+        Connection connection = null;
+        List<Book> books = new ArrayList<>();
         try
         {
             initialContext = new InitialContext();
@@ -33,15 +73,15 @@ public class UserDao implements IDao<User> {
                 ResultSet resultSet = statement.executeQuery(SELECT_QUERY);
                 while (resultSet.next())
                 {
-                   User user = new User();
-                   user.setId(resultSet.getInt("id"));
-                   user.setFullName(resultSet.getString("fullName"));
-                   user.setLogin(resultSet.getString("login"));
-                   user.setPassword(resultSet.getString("password"));
-                   user.setRole(resultSet.getInt("role"));
+                    Book book = new Book();
+                    book.setId(resultSet.getInt("id"));
+                    book.setName(resultSet.getString("name"));
+                    book.setAuthorFullName(resultSet.getString("authorFullName"));
+                    book.setCountOfCopies(resultSet.getInt("countOfCopies"));
 
 
-                   users.add(user);
+
+                    books.add(book);
                 }
                 resultSet.close();
                 connection.close();
@@ -56,11 +96,12 @@ public class UserDao implements IDao<User> {
             e.printStackTrace();
         }
 
-        return users;
+        return books;
     }
 
+
     @Override
-    public boolean insert(User item) {
+    public boolean insert(Book item) {
         Context initialContext = null;
         Connection connection = null;
 
@@ -74,10 +115,9 @@ public class UserDao implements IDao<User> {
             try {
                 PreparedStatement preparedStatement = null;
                 preparedStatement = connection.prepareStatement(INSERT_QUERY);
-                preparedStatement.setString(1, item.getFullName());
-                preparedStatement.setString(2, item.getLogin());
-                preparedStatement.setString(3, item.getPassword());
-                preparedStatement.setInt(4, item.getRole());
+                preparedStatement.setString(1, item.getName());
+                preparedStatement.setString(2, item.getAuthorFullName());
+                preparedStatement.setInt(3, item.getCountOfCopies());
 
                 int inserted = preparedStatement.executeUpdate();
 
@@ -97,20 +137,16 @@ public class UserDao implements IDao<User> {
         return false;
     }
 
+
     @Override
     public boolean delete(int id) {
         return false;
     }
 
     @Override
-    public User get(int id) {
-        return null;
-    }
-
-    public User get(String login, String password ) {
+    public Book get(int id){
         Context initialContext = null;
         Connection connection = null;
-        User user = new User();
         try
         {
             initialContext = new InitialContext();
@@ -119,18 +155,17 @@ public class UserDao implements IDao<User> {
             connection = ds.getConnection();
 
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement(GET_BY_LOGIN_PASSWORD);
-                preparedStatement.setString(1, login);
-                preparedStatement.setString(2, password);
+                PreparedStatement preparedStatement = connection.prepareStatement(GET_BY_ID_QUERY);
+                preparedStatement.setInt(1, id);
                 ResultSet resultSet = preparedStatement.executeQuery();
-                while (resultSet.next())
+                if (resultSet.next())
                 {
-                    user.setId(resultSet.getInt("id"));
-                    user.setFullName(resultSet.getString("fullName"));
-                    user.setLogin(resultSet.getString("login"));
-                    user.setPassword(resultSet.getString("password"));
-                    user.setRole(resultSet.getInt("role"));
-                    break;
+                    Book book = new Book();
+                    book.setId(resultSet.getInt("id"));
+                    book.setName(resultSet.getString("name"));
+                    book.setAuthorFullName(resultSet.getString("authorFullName"));
+                    book.setCountOfCopies(resultSet.getInt("countOfCopies"));
+                    return book;
                 }
                 resultSet.close();
                 connection.close();
@@ -144,7 +179,7 @@ public class UserDao implements IDao<User> {
         {
             e.printStackTrace();
         }
-        System.out.println("userFullName: " + user.getFullName());
-        return user;
+
+        return null;
     }
 }
